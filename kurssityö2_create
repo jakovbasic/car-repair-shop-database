@@ -1,0 +1,151 @@
+CREATE TABLE Tyontekijat (
+    Henkilotunnus TEXT PRIMARY KEY,
+    Nimi TEXT
+);
+
+CREATE TABLE Aikavalit(
+    Alku TEXT NOT NULL,
+    Loppu TEXT NOT NULL,
+    Tyyppi TEXT,
+    PRIMARY KEY (Alku,Loppu)
+);
+
+CREATE TABLE Asiakkaat (
+    Henkilotunnus TEXT PRIMARY KEY,
+    Nimi TEXT,
+    Sahkoposti TEXT,
+    PuhelinNumero INTEGER,
+    Osoite TEXT
+);
+
+CREATE TABLE Varattuna (
+    LaiteNumero INTEGER NOT NULL,
+    Alku TEXT NOT NULL,
+    Loppu TEXT NOT NULL,
+    PRIMARY KEY (LaiteNumero, Alku, Loppu)
+);
+
+CREATE TABLE Omistajat (
+    Henkilotunnus TEXT PRIMARY KEY,
+    Nimi TEXT
+);
+
+CREATE TABLE Varaavat (
+    Henkilotunnus TEXT NOT NULL,
+    Alku TEXT NOT NULL,
+    Loppu TEXT NOT NULL,
+    FOREIGN KEY (Alku,Loppu) REFERENCES Aikavalit(Alku,Loppu),
+    FOREIGN KEY (Henkilotunnus) REFERENCES Tyontekijat(Henkilotunnus),
+    PRIMARY KEY (Henkilotunnus, Alku, Loppu)
+);
+
+CREATE TABLE Autot (
+    Rekisterinumero TEXT PRIMARY KEY,
+    AjetutKilometrit INTEGER,
+    AsiakasID TEXT NOT NULL,
+    FOREIGN KEY (AsiakasID) REFERENCES Asiakkaat(Henkilotunnus)
+);
+
+CREATE TABLE Omistaa (
+    Rekisterinumero TEXT NOT NULL,
+    Henkilotunnus TEXT NOT NULL,
+    FOREIGN KEY (Rekisterinumero) REFERENCES Autot(Rekisterinumero),
+    FOREIGN KEY (Henkilotunnus) REFERENCES Omistajat(Henkilotunnus),
+    PRIMARY KEY (Rekisterinumero, Henkilotunnus)
+);
+
+CREATE TABLE Huollot (
+    Tunnusluku INTEGER PRIMARY KEY,
+    Tyyppi TEXT CHECK (Tyyppi = 'Maaraaikaishuolto' OR Tyyppi = 'Korjaus'),
+    AsiakasID TEXT NOT NULL,
+    LaskuNumero INTEGER NOT NULL,
+    TyontekijaID TEXT NOT NULL,
+    Rekisterinumero TEXT NOT NULL,
+    FOREIGN KEY (AsiakasID) REFERENCES Asiakkaat(Henkilotunnus),
+    FOREIGN KEY (LaskuNumero) REFERENCES Laskut(laskuNumero),
+    FOREIGN KEY (TyontekijaID) REFERENCES Tyontekijat(Henkilotunnus),
+    FOREIGN KEY (Rekisterinumero) REFERENCES Autot(Rekisterinumero)
+);
+
+CREATE TABLE Maksumuistutukset (
+    LaskuNumero INTEGER PRIMARY KEY,
+    Lukumaara INTEGER
+);
+
+CREATE TABLE Laskut (
+    LaskuNumero INTEGER PRIMARY KEY,
+    Summa REAL,
+    tila TEXT CHECK (tila = 'Maksettu' OR tila = 'Maksamatta'),
+    Erapaiva TEXT,
+    HuoltoID INTEGER NOT NULL,
+    AsiakasID TEXT NOT NULL
+);
+
+CREATE TABLE Varaosat (
+    Nimi TEXT PRIMARY KEY,
+    Hinta REAL,
+    Toimenpide TEXT
+);
+
+CREATE TABLE Tarvitaan (
+    ToimenpideNimi TEXT,
+    LaiteNo INTEGER,
+    PRIMARY KEY (ToimenpideNimi, LaiteNo),
+    FOREIGN KEY (laiteNo) REFERENCES LaiteKappaleet(laiteNumero),
+    FOREIGN KEY (toimenpideNimi) REFERENCES Toimenpiteet(Nimi)
+);
+
+CREATE TABLE  LaiteKappaleet (
+    LaiteNumero INTEGER PRIMARY KEY,
+    Nimi TEXT,
+    LaiteTyyppi TEXT
+);
+
+CREATE TABLE LaiteTyypit (
+    Nimi PRIMARY KEY
+);
+
+CREATE TABLE Sisaltyvat (
+    HuoltoID INTEGER,
+    ToimenpideNimi TEXT ,
+    FOREIGN KEY (ToimenpideNimi) REFERENCES Toimenpiteet(Nimi),
+    FOREIGN KEY (HuoltoID) REFERENCES Huollot(TunnusLuku),
+    PRIMARY KEY ( HuoltoID, ToimenpideNimi)
+);
+
+CREATE TABLE Toimenpiteet (
+    Nimi TEXT PRIMARY KEY,
+    Kesto REAL,
+    Tuntihinta REAL
+);
+
+CREATE TABLE Käytetään (
+    ToimenpideNimi TEXT,
+    LaiteTyyppi TEXT,
+    PRIMARY KEY (ToimenpideNimi, LaiteTyyppi),
+    FOREIGN KEY (laiteTyyppi) REFERENCES LaiteTyypit(Nimi)
+);
+
+CREATE TABLE Vaatii (
+    HuoltoTunnus INTEGER NOT NULL,
+    Alku TEXT,
+    Loppu TEXT,
+    PRIMARY KEY (Huoltotunnus,Alku, Loppu)
+    FOREIGN KEY (HuoltoTunnus) REFERENCES Huollot(TunnusLuku)
+);
+
+CREATE INDEX AsiakasID ON Asiakkaat(Henkilotunnus);
+
+CREATE INDEX AsiakasNimi ON Asiakkaat(Nimi);
+
+CREATE INDEX LaskuNo ON Laskut(LaskuNumero);
+
+CREATE INDEX EraPv ON Laskut(Erapaiva);
+
+CREATE INDEX Huolto ON Huollot(Rekisterinumero);
+
+CREATE VIEW LaskutJaAsiakkaat AS
+    SELECT Asiakkaat.Henkilotunnus, Asiakkaat.Nimi,Laskut.LaskuNumero, Laskut.tila, Laskut.Erapaiva ,Laskut.summa
+    FROM Asiakkaat, Laskut, Huollot
+    WHERE Asiakkaat.Henkilotunnus = Huollot.AsiakasID AND Huollot.LaskuNumero = Laskut.LaskuNumero;
+    
